@@ -1,8 +1,8 @@
 {
-  "name": "es6-starterkit",
+  "name": "react-http",
   "version": "0.0.0",
   "description": "",
-  "homepage": "https://github.com/elierotenberg/es6-starterkit",
+  "homepage": "https://github.com/elierotenberg/react-http",
   "keywords": [
     "editorconfig",
     "eslintconfig",
@@ -10,13 +10,13 @@
     "gulpfile",
     "jsbeautify"
   ],
-  "bugs": "https://github.com/elierotenberg/es6-starterkit/issues",
+  "bugs": "https://github.com/elierotenberg/react-http/issues",
   "license": "MIT",
   "author": "Elie Rotenberg <elie@rotenberg.io>",
   "main": "src/index.jsx",
   "repository": {
     "type": "git",
-    "url": "https://github.com/elierotenberg/es6-starterkit.git"
+    "url": "https://github.com/elierotenberg/react-http.git"
   },
   "scripts": {
     "test": "gulp test"
