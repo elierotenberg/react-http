@@ -1,5 +1,5 @@
 import React from 'react';
-import http, { get, post, $post } from '../..';
+import http, { get, post, $post, $ok, $err, $pending } from '../..';
 
 const config = {
   protocol: 'https',
@@ -9,17 +9,18 @@ const config = {
 };
 
 @http((props) => ({
-  users: get('/users'),
-  user42: get('/users/42'),
   pingProps: post('/ping', { id: props.id }),
+  user42: get('/users/42'),
+  users: get('/users'),
 }), config)
 export default class extends React.Component {
   static displayName = 'TestComponent';
 
   static propTypes = {
-    pingProps: React.PropTypes.function.isRequired,
-    user42: React.PropTypes.object,
-    users: React.PropTypes.array,
+    id: React.PropTypes.any,
+    pingProps: http.propType.isRequired,
+    user42: http.propType.isRequired,
+    users: http.propType.isRequired,
   };
 
   reping() {
@@ -28,7 +29,19 @@ export default class extends React.Component {
   }
 
   render() {
+    const countUsers = (([$status, value]) => {
+      if($status === $ok) {
+        return value.length;
+      }
+      if($status === $err) {
+        return `Error(${value})`;
+      }
+      if($status === $pending) {
+        return `...`;
+      }
+    })(this.props.users);
     return <div>
+      {countUsers}
       {JSON.stringify(this.props, null, 2)}
     </div>;
   }

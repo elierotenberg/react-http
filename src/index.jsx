@@ -12,6 +12,10 @@ const $methods = _(methods)
   .object()
 .value();
 
+const $ok = Symbol('ok');
+const $err = Symbol('err');
+const $pending = Symbol('pending');
+
 class UnknownHTTPTypeError extends TypeError {
   constructor(method, ...rest) {
     super(`Unknown HTTP method type: ${method}`, ...rest);
@@ -43,10 +47,7 @@ function request(method, href, params = {}, opts = {}, mw = []) {
   }))
   .cancellable()
   .timeout(timeout)
-  .catch(Promise.CancellationError, () => {
-    req.abort();
-  })
-  .catch(Promise.TimeoutError, (err) => {
+  .catch(Promise.TimeoutError, Promise.CancellationError, (err) => {
     req.abort();
     throw err;
   });
@@ -61,6 +62,29 @@ function expand({ protocol, hostname, port, prefix }, pathname) {
   }), pathname);
 }
 
+function propType(props, propName, componentName, isRequired = false) {
+  const prop = props[propName];
+  if(!prop && isRequired) {
+    return new Error(`Expecting non undefined http request result.`);
+  }
+  if(!_.isArray(prop)) {
+    return new Error(`Expecting [$status, ...] for http request result, ${prop} is not an Array.`);
+  }
+  const [$status] = prop;
+  if(!$status) {
+    return new Error(`Expecting [$status, ...] for http request result, ${prop} has no $status.`);
+  }
+  if(!_.contains([$ok, $err, $pending], $status)) {
+    return new Error(`Expecting [$status, ...] for http request result, ${$status} is not a known status.`);
+  }
+}
+
+Object.assign(propType, {
+  isRequired(props, propName, componentName) {
+    return propType(props, propName, componentName, true);
+  },
+});
+
 function http(getHTTPBindings, config = {}) {
   return (Component) => {
     const EnhancedComponent = Object.assign(class extends Component {}, _.mapValues($methods, ($method, method) =>
@@ -69,10 +93,28 @@ function http(getHTTPBindings, config = {}) {
       }
     ));
     return class extends React.Component {
+      constructor(props, ...rest) {
+        super(props, ...rest);
+        this.state = _(getHTTPBindings(props))
+          .map(([method, params, pathname], key) => {
+            request(method, expand(config, pathname), params, config, config)
+            .then((res) => this.setState({ [key]: [$ok, res] }))
+            .catch((err) => {
+              this.setState({ [key]: [$err, err] });
+              throw err;
+            });
+            return [key, [$pending, void 0]];
+          })
+          .object()
+        .value();
+      }
 
       render() {
         const { props, state } = this;
-        return <EnhancedComponent {...props} {...state} />;
+        return <EnhancedComponent
+          {...props}
+          {...state}
+        />;
       }
     };
   };
@@ -80,9 +122,14 @@ function http(getHTTPBindings, config = {}) {
 
 export default Object.assign(
   http,
+  {
+    $ok,
+    $err,
+    $pending,
+    propType,
+  },
   // $get, $post, $put, $delete
   _($methods).map(($method, method) => [`$${method}`, $method]).object().value(),
-
   // get, post, put, delete
   _(methods).map((method) => [
     method,
